@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#app {
+  @apply w-screen h-screen p-0 m-0;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+}
