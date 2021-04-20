@@ -44,7 +44,7 @@
           </div>
         </div>
       </div>
-      {{ index }} <span @click="log()"> Console </span>
+      {{ index }}
       <div class="bg-red-200">
         <div class="flex">
           <div class="w-1/4">
@@ -60,10 +60,10 @@
 
         <div class="flex" v-for="(item, index) in IncraData" :key="index">
           <div class="w-1/4">
-            <p>{{ item.registry }}</p>
+            <p>{{ Farm.incraData[item.matriculaId].registry }}</p>
           </div>
           <div class="w-full">
-            <p>{{ item.farmName }}</p>
+            <p>{{ Farm.incraData[item.matriculaId].farmName }}</p>
           </div>
           <div class="w-1/5 flex">
             <p class="mr-2" @click="focusMapIndex(index)">Focar</p>
@@ -83,31 +83,79 @@ import { randHexadecimalColor, invertLatLong } from "@/assets/farmLib";
 export default defineComponent({
   name: "App",
 
-  // data(): any {
-  //   return {
-  //     Farm: {},
-  //     MapsLib: {},
-  //     Map: {},
-  //     status: "Buscando dados",
-  //     index: -1,
-  //   };
-  // },
   data: () => ({
     Farm: {},
-    hasMapsLib: false,
     Map: {},
-    status: "Buscando dados",
     index: -1,
+    trig: {
+      ll: [
+        { lat: -19.7531905, lng: -47.9369182 },
+        { lat: -19.7541705, lng: -47.9369182 },
+        { lat: -19.7531905, lng: -47.9339482 },
+      ],
+    },
+    fig: [],
   }),
 
-  beforeCreate() {
+  mounted() {
     if (!(window as any)?.google?.maps) {
       const googleMapsKey = "AIzaSyAkRnzcWdZfy9PQnI0d_Zp1CkKFkSin82U";
       const googleMaps = document.createElement("script");
       googleMaps.setAttribute(
         "src",
-        `https://maps.googleapis.com/maps/api/js?key=${googleMapsKey}&libraries=drawing`
+        `https://maps.googleapis.com/maps/api/js?key=${googleMapsKey}&callback=initMap&libraries=drawing`
       );
+      googleMaps.async = true;
+      window.initMap = () => {
+        const maps = (window as any).google?.maps;
+
+        maps.Polygon.prototype.getBounds = function () {
+          let bounds = new maps.LatLngBounds();
+          let paths = this.getPaths();
+          let path;
+          for (let i = 0; i < paths.getLength(); i++) {
+            path = paths.getAt(i);
+            for (let ii = 0; ii < path.getLength(); ii++) {
+              bounds.extend(path.getAt(ii));
+            }
+          }
+          return bounds;
+        };
+
+        this.Map = new maps.Map(document.getElementById("map"), {
+          zoom: 4,
+          center: {
+            lat: -12.726084,
+            lng: -47.532103,
+          },
+          zoomControl: true,
+          mapTypeControl: false,
+          scaleControl: false,
+          streetViewControl: false,
+          rotateControl: false,
+          fullscreenControl: true,
+          disableDefaultUI: false,
+          mapTypeId: "hybrid",
+        });
+
+        this.trig = new maps.Polygon({
+          paths: this.trig.ll,
+          strokeColor: "#FF0000",
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: "#FF0000",
+          fillOpacity: 0.35,
+          editable: false,
+        });
+
+        this.trig["key"] = this.fig.length;
+
+        this.trig.setMap(this.Map);
+        this.trig.addListener("rightclick", (ev) =>
+          this.click(ev, this.trig["idElement"])
+        );
+        this.fig.push(this.trig);
+      };
       document.head.appendChild(googleMaps);
     }
   },
@@ -116,46 +164,7 @@ export default defineComponent({
     this.Farm = DataJson();
   },
 
-  mounted() {
-    if (this.IncraData.length > 0) {
-      if (!(window as any).google?.maps) {
-        setTimeout(() => {
-          if ((window as any).google?.maps) {
-            this.hasMapsLib = true;
-            this.initMap();
-          }
-        }, 1000);
-      } else {
-        this.initMap();
-      }
-    }
-  },
-
   methods: {
-    log() {
-      console.log(this.Map);
-    },
-    initMap() {
-      const maps = (window as any).google?.maps;
-
-      maps.Polygon.prototype.getBounds = function () {
-        let bounds = new maps.LatLngBounds();
-        let paths = this.getPaths();
-        let path;
-        for (let i = 0; i < paths.getLength(); i++) {
-          path = paths.getAt(i);
-          for (let ii = 0; ii < path.getLength(); ii++) {
-            bounds.extend(path.getAt(ii));
-          }
-        }
-        return bounds;
-      };
-
-      // this.Map.addListener("click", (e) => {
-      //   console.log(e);
-      // });
-    },
-
     changeIndex(value: number) {
       this.index = value;
     },
@@ -339,16 +348,25 @@ export default defineComponent({
       }, []);
     },
     IncraData(): any {
-      return this.Farm.incraData.map((item, index) => {
+      const data = this.Farm.incraData.map((item, index) => {
         return {
-          ...item,
-          index,
-          latlngs:
-            !!item?.geometry?.coordinates && item?.geometry.type === "Polygon"
-              ? invertLatLong(item?.geometry?.coordinates)
-              : [],
+          // ...item,
+          matriculaId: index,
+          ll: item?.geometry?.coordinates,
         };
       });
+
+      return data.reduce((objectArray, item) => {
+        if (!!item?.ll) {
+          const arr = [];
+          for (const iterator of item?.ll) {
+            arr.push({ matriculaId: item.matriculaId, ll: item.ll });
+          }
+          return [...objectArray, ...arr];
+        }
+
+        return objectArray;
+      }, []);
     },
     geoData(): any {
       return this.IncraData.reduce((arr, item) => {
@@ -359,14 +377,6 @@ export default defineComponent({
           }, []),
         ];
       }, []);
-    },
-  },
-
-  watch: {
-    hasMapsLib(value) {
-      if (value) {
-        this.focusMap();
-      }
     },
   },
 });
