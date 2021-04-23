@@ -40,8 +40,6 @@ export const randHexadecimalColor = () => {
 
 export const invertLatLong = (data) => {
   return data.map((arr) => {
-    return arr.map((item) => {
-      return [item[1], item[0]];
-    });
+    return [arr[1], arr[0]];
   });
 };

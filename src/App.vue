@@ -83,17 +83,10 @@ import { randHexadecimalColor, invertLatLong } from "@/assets/farmLib";
 export default defineComponent({
   name: "App",
 
-  data: () => ({
+  data: (): any => ({
     Farm: {},
     Map: {},
     index: -1,
-    trig: {
-      ll: [
-        { lat: -19.7531905, lng: -47.9369182 },
-        { lat: -19.7541705, lng: -47.9369182 },
-        { lat: -19.7531905, lng: -47.9339482 },
-      ],
-    },
     fig: [],
   }),
 
@@ -138,23 +131,36 @@ export default defineComponent({
           mapTypeId: "hybrid",
         });
 
-        this.trig = new maps.Polygon({
-          paths: this.trig.ll,
-          strokeColor: "#FF0000",
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
-          fillColor: "#FF0000",
-          fillOpacity: 0.35,
-          editable: false,
+        this.IncraData.forEach((trig, index): any => {
+          // const color =
+          // index === undefined
+          //   ? randHexadecimalColor()
+          //   : index === ind
+          //   ? "#0f0"
+          //   : "#999";
+
+          const element: any = new maps.Polygon({
+            paths: this.googleGeoData(trig.ll),
+            strokeColor: randHexadecimalColor(),
+            editable: false,
+          });
+
+          element.setMap(this.Map);
+          element.addListener("rightclick", (ev) =>
+            this.removePoint(ev, index)
+          );
+          this.fig[index] = element;
         });
 
-        this.trig["key"] = this.fig.length;
+        const polygonArray = this.geoData.map((item) => {
+          return new maps.LatLng(item[0], item[1]);
+        });
 
-        this.trig.setMap(this.Map);
-        this.trig.addListener("rightclick", (ev) =>
-          this.click(ev, this.trig["idElement"])
-        );
-        this.fig.push(this.trig);
+        const Polygon = new maps.Polygon({
+          paths: polygonArray,
+        });
+
+        this.Map.fitBounds(Polygon.getBounds());
       };
       document.head.appendChild(googleMaps);
     }
@@ -167,6 +173,20 @@ export default defineComponent({
   methods: {
     changeIndex(value: number) {
       this.index = value;
+    },
+
+    removePoint(ev, id) {
+      if (this.fig[id].getEditable()) {
+        const vertices = this.fig[id].getPath();
+        if (vertices.length > 3) {
+          for (let i = 0; i < vertices.getLength(); i++) {
+            const xy = vertices.getAt(i);
+            if (ev.latLng == xy) {
+              this.fig[id].getPath().removeAt(i);
+            }
+          }
+        }
+      }
     },
 
     googleGeoData(data) {
@@ -271,43 +291,45 @@ export default defineComponent({
     },
 
     focusMapIndex(index) {
-      const maps = (window as any).google?.maps;
+      // const maps = (window as any).google?.maps;
 
       this.changeIndex(index);
+      console.log(index);
+      console.log(this.fig[index]);
 
-      const poly: any = [];
+      // const poly: any = [];
 
-      for (const latLngs of this.IncraData[index].latlngs) {
-        for (const item of latLngs) {
-          poly.push(item);
-        }
-      }
+      // for (const latLngs of this.IncraData[index].latlngs) {
+      //   for (const item of latLngs) {
+      //     poly.push(item);
+      //   }
+      // }
 
-      const polygonArray = poly.map((item) => {
-        return new maps.LatLng(item[0], item[1]);
-      });
+      // const polygonArray = poly.map((item) => {
+      //   return new maps.LatLng(item[0], item[1]);
+      // });
 
-      const selectPolygon = new maps.Polygon({
-        paths: polygonArray,
-      });
+      // const selectPolygon = new maps.Polygon({
+      //   paths: polygonArray,
+      // });
 
-      this.Map = new maps.Map(document.getElementById("map"), {
-        zoom: 4,
-        center: {
-          lat: -12.726084,
-          lng: -47.532103,
-        },
-        zoomControl: true,
-        mapTypeControl: false,
-        scaleControl: false,
-        streetViewControl: false,
-        rotateControl: false,
-        fullscreenControl: true,
-        disableDefaultUI: false,
-        mapTypeId: "hybrid",
-      });
+      // this.Map = new maps.Map(document.getElementById("map"), {
+      //   zoom: 4,
+      //   center: {
+      //     lat: -12.726084,
+      //     lng: -47.532103,
+      //   },
+      //   zoomControl: true,
+      //   mapTypeControl: false,
+      //   scaleControl: false,
+      //   streetViewControl: false,
+      //   rotateControl: false,
+      //   fullscreenControl: true,
+      //   disableDefaultUI: false,
+      //   mapTypeId: "hybrid",
+      // });
 
-      this.setMap(this.Map, selectPolygon, index);
+      // this.setMap(this.Map, selectPolygon, index);
     },
   },
 
@@ -360,7 +382,10 @@ export default defineComponent({
         if (!!item?.ll) {
           const arr = [];
           for (const iterator of item?.ll) {
-            arr.push({ matriculaId: item.matriculaId, ll: item.ll });
+            arr.push({
+              matriculaId: item.matriculaId,
+              ll: invertLatLong(iterator),
+            });
           }
           return [...objectArray, ...arr];
         }
@@ -370,12 +395,7 @@ export default defineComponent({
     },
     geoData(): any {
       return this.IncraData.reduce((arr, item) => {
-        return [
-          ...arr,
-          ...item?.latlngs?.reduce((ar, it) => {
-            return [...ar, ...it];
-          }, []),
-        ];
+        return [...arr, ...item?.ll];
       }, []);
     },
   },
