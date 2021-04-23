@@ -67,7 +67,7 @@
           </div>
           <div class="w-1/5 flex">
             <p class="mr-2" @click="focusMapIndex(index)">Focar</p>
-            <button @click="focusMapIndex(index, true)">ED</button>
+            <button @click="editable(index)">ED</button>
           </div>
         </div>
       </div>
@@ -290,6 +290,16 @@ export default defineComponent({
       });
 
       this.Map.fitBounds(this.fig[index].getBounds());
+    },
+
+    editable(index) {
+      this.fig.forEach((item, i) => {
+        if (index === i) {
+          item.setOptions({ editable: true });
+        } else {
+          item.setOptions({ editable: false });
+        }
+      });
     },
   },
 
