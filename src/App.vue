@@ -45,6 +45,7 @@
         </div>
       </div>
       {{ index }}
+      <span @click="add"> ADD </span>
       <div class="bg-red-200">
         <div class="flex">
           <div class="w-1/4">
@@ -195,67 +196,30 @@ export default defineComponent({
       }, []);
     },
 
-    setMap(map, centerPolygon, index?) {
+    add() {
       const maps = (window as any).google?.maps;
+      const drawing = new maps.drawing.DrawingManager({
+        map: this.Map,
+        drawingMode: maps.drawing.OverlayType.POLYGON,
+        drawingControl: false,
+        drawingControlOptions: {
+          position: maps.ControlPosition.TOP_CENTER,
+          drawingModes: ["polygon"],
+        },
 
-      // const drawing = new maps.drawing.DrawingManager({
-      //   map,
-      //   drawingMode: maps.drawing.OverlayType.POLYGON,
-      //   drawingControl: true,
-      //   drawingControlOptions: {
-      //     position: maps.ControlPosition.TOP_CENTER,
-      //     drawingModes: ["polygon"],
-      //   },
-
-      //   polygonOptions: {
-      //     strokeColor: "#0f0",
-      //     editable: true,
-      //     dragabble: true,
-      //   },
-      // });
-
-      // drawing.addListener("polygoncomplete", (e) => {
-      //   console.log(e);
-      //   e.setEditable(true);
-
-      //   drawing.setDrawingMode();
-      // });
-
-      map.fitBounds(centerPolygon.getBounds());
-
-      this.IncraData.forEach((item, ind) => {
-        const color =
-          index === undefined
-            ? randHexadecimalColor()
-            : index === ind
-            ? "#0f0"
-            : "#999";
-        for (const latLngs of item.latlngs) {
-          const newPolygon = new maps.Polygon({
-            paths: this.googleGeoData(latLngs),
-            strokeColor: color,
-          });
-          if (index !== ind) {
-            newPolygon.setMap(map);
-          }
-        }
+        polygonOptions: {
+          strokeColor: "#0f0",
+          editable: true,
+          dragabble: true,
+        },
       });
 
-      if (index > -1) {
-        for (const latLngs of this.IncraData[index].latlngs) {
-          const newPolygon = new maps.Polygon({
-            paths: this.googleGeoData(latLngs),
-            strokeColor: "#0f0",
-            editable: true,
-          });
+      drawing.addListener("polygoncomplete", (e) => {
+        console.log(e);
+        e.setEditable(true);
 
-          newPolygon.setMap(map);
-
-          newPolygon.addListener("drag", function (polygon) {
-            console.log(polygon);
-          });
-        }
-      }
+        drawing.setDrawingMode();
+      });
     },
 
     focusMap() {
@@ -283,9 +247,9 @@ export default defineComponent({
 
       this.fig.forEach((item, i) => {
         if (index === i) {
-          item.setOptions({ strokeColor: "#0f0" });
+          item.setOptions({ strokeColor: "#0f0", editable: false });
         } else {
-          item.setOptions({ strokeColor: "#999" });
+          item.setOptions({ strokeColor: "#999", editable: false });
         }
       });
 
@@ -293,6 +257,7 @@ export default defineComponent({
     },
 
     editable(index) {
+      this.focusMapIndex(index);
       this.fig.forEach((item, i) => {
         if (index === i) {
           item.setOptions({ editable: true });
