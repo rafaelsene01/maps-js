@@ -53,7 +53,7 @@
           <div class="w-full">
             <label>Nome</label>
           </div>
-          <div class="w-1/5">
+          <div class="w-1/5" @click="focusMap">
             <label>Todo</label>
           </div>
         </div>
@@ -271,65 +271,25 @@ export default defineComponent({
         paths: polygonArray,
       });
 
-      this.Map = new maps.Map(document.getElementById("map"), {
-        zoom: 4,
-        center: {
-          lat: -12.726084,
-          lng: -47.532103,
-        },
-        zoomControl: true,
-        mapTypeControl: false,
-        scaleControl: false,
-        streetViewControl: false,
-        rotateControl: false,
-        fullscreenControl: true,
-        disableDefaultUI: false,
-        mapTypeId: "hybrid",
+      this.fig.forEach((item, i) => {
+        item.setOptions({ strokeColor: randHexadecimalColor() });
       });
 
-      this.setMap(this.Map, Polygon);
+      this.Map.fitBounds(Polygon.getBounds());
     },
 
     focusMapIndex(index) {
-      // const maps = (window as any).google?.maps;
-
       this.changeIndex(index);
-      console.log(index);
-      console.log(this.fig[index]);
 
-      // const poly: any = [];
+      this.fig.forEach((item, i) => {
+        if (index === i) {
+          item.setOptions({ strokeColor: "#0f0" });
+        } else {
+          item.setOptions({ strokeColor: "#999" });
+        }
+      });
 
-      // for (const latLngs of this.IncraData[index].latlngs) {
-      //   for (const item of latLngs) {
-      //     poly.push(item);
-      //   }
-      // }
-
-      // const polygonArray = poly.map((item) => {
-      //   return new maps.LatLng(item[0], item[1]);
-      // });
-
-      // const selectPolygon = new maps.Polygon({
-      //   paths: polygonArray,
-      // });
-
-      // this.Map = new maps.Map(document.getElementById("map"), {
-      //   zoom: 4,
-      //   center: {
-      //     lat: -12.726084,
-      //     lng: -47.532103,
-      //   },
-      //   zoomControl: true,
-      //   mapTypeControl: false,
-      //   scaleControl: false,
-      //   streetViewControl: false,
-      //   rotateControl: false,
-      //   fullscreenControl: true,
-      //   disableDefaultUI: false,
-      //   mapTypeId: "hybrid",
-      // });
-
-      // this.setMap(this.Map, selectPolygon, index);
+      this.Map.fitBounds(this.fig[index].getBounds());
     },
   },
 
