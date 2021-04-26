@@ -118,52 +118,7 @@ export default defineComponent({
           return bounds;
         };
 
-        this.Map = new maps.Map(document.getElementById("map"), {
-          zoom: 4,
-          center: {
-            lat: -12.726084,
-            lng: -47.532103,
-          },
-          zoomControl: true,
-          mapTypeControl: false,
-          scaleControl: false,
-          streetViewControl: false,
-          rotateControl: false,
-          fullscreenControl: true,
-          disableDefaultUI: false,
-          mapTypeId: "hybrid",
-        });
-
-        this.IncraData.forEach((trig, index): any => {
-          // const color =
-          // index === undefined
-          //   ? randHexadecimalColor()
-          //   : index === ind
-          //   ? "#0f0"
-          //   : "#999";
-
-          const element: any = new maps.Polygon({
-            paths: this.googleGeoData(trig.ll),
-            strokeColor: randHexadecimalColor(),
-            editable: false,
-          });
-
-          element.setMap(this.Map);
-          element.addListener("rightclick", (ev) =>
-            this.removePoint(ev, index)
-          );
-          this.fig[index] = element;
-        });
-
-        const polygonArray = this.geoData.map((item) => {
-          return new maps.LatLng(item[0], item[1]);
-        });
-
-        const Polygon = new maps.Polygon({
-          paths: polygonArray,
-        });
-
-        this.Map.fitBounds(Polygon.getBounds());
+        this.drawPoints();
       };
       document.head.appendChild(googleMaps);
     }
@@ -218,9 +173,11 @@ export default defineComponent({
 
       drawing.addListener("polygoncomplete", (e) => {
         const polygon: any = [];
-        e.getPaths().Nb[0].Nb.forEach((element) => {
-          polygon.push([element.lng(), element.lat()]);
-        });
+        e.getPath()
+          .getArray()
+          .forEach((element) => {
+            polygon.push([element.lng(), element.lat()]);
+          });
 
         const Farm = this.Farm;
 
@@ -241,7 +198,10 @@ export default defineComponent({
         };
 
         const length = this.fig.length;
-        this.fig[length] = e;
+        this.fig[length] = {
+          poly: e,
+          matriculaId: this.Farm.incraData.length - 1,
+        };
         e.addListener("rightclick", (ev) => this.removePoint(ev, length));
 
         drawing.setDrawingMode();
@@ -262,7 +222,7 @@ export default defineComponent({
       });
 
       this.fig.forEach((item, i) => {
-        item.setOptions({
+        item.poly.setOptions({
           strokeColor: randHexadecimalColor(),
           editable: false,
         });
@@ -276,38 +236,119 @@ export default defineComponent({
 
       this.fig.forEach((item, i) => {
         if (index === i) {
-          item.setOptions({
+          item.poly.setOptions({
             strokeColor: "#0f0",
             editable: false,
           });
         } else {
-          item.setOptions({
+          item.poly.setOptions({
             strokeColor: "#999",
             editable: false,
           });
         }
       });
 
-      this.Map.fitBounds(this.fig[index].getBounds());
+      this.Map.fitBounds(this.fig[index].poly.getBounds());
+    },
+
+    drawPoints() {
+      const maps = (window as any).google?.maps;
+
+      this.Map = new maps.Map(document.getElementById("map"), {
+        zoom: 4,
+        center: {
+          lat: -12.726084,
+          lng: -47.532103,
+        },
+        zoomControl: true,
+        mapTypeControl: false,
+        scaleControl: false,
+        streetViewControl: false,
+        rotateControl: false,
+        fullscreenControl: true,
+        disableDefaultUI: false,
+        mapTypeId: "hybrid",
+      });
+
+      this.IncraData.forEach((trig, index): any => {
+        // const color =
+        // index === undefined
+        //   ? randHexadecimalColor()
+        //   : index === ind
+        //   ? "#0f0"
+        //   : "#999";
+
+        const element: any = new maps.Polygon({
+          paths: this.googleGeoData(trig.ll),
+          strokeColor: randHexadecimalColor(),
+          editable: false,
+        });
+
+        element.setMap(this.Map);
+        element.addListener("rightclick", (ev) => this.removePoint(ev, index));
+        this.fig[index] = { poly: element, matriculaId: trig.matriculaId };
+      });
+
+      const polygonArray = this.geoData.map((item) => {
+        return new maps.LatLng(item[0], item[1]);
+      });
+
+      const Polygon = new maps.Polygon({
+        paths: polygonArray,
+      });
+
+      this.Map.fitBounds(Polygon.getBounds());
     },
 
     save() {
+      const Farm = this.Farm;
+
+      const polygon: any = [];
+      for (const key in Farm.incraData) {
+        const filter = this.fig?.filter((item) => item.matriculaId == key);
+        const data = filter.reduce((arr, item) => {
+          return [
+            ...arr,
+            item.poly
+              .getPath()
+              .getArray()
+              .reduce((polyArr, polyItem) => {
+                return [...polyArr, [polyItem.lng(), polyItem.lat()]];
+              }, []),
+          ];
+        }, []);
+
+        polygon.push(data);
+      }
+
+      this.Farm = {
+        ...Farm,
+        incraData: Farm.incraData.map((item, index) => {
+          return {
+            ...item,
+            geometry: { ...item.geometry, coordinates: polygon[index] },
+          };
+        }),
+      };
+
       this.edit = false;
-      this.focusMap();
+
+      while (this.fig.length) {
+        this.fig.pop().poly.setMap(null);
+      }
+
+      this.drawPoints();
     },
 
     editable(index) {
       this.edit = true;
       this.focusMapIndex(index);
-      this.fig[index].getPaths().Nb[0].Nb.forEach((element) => {
-        console.log(element.lat(), element.lng());
-      });
 
       this.fig.forEach((item, i) => {
         if (index === i) {
-          item.setOptions({ editable: true });
+          item.poly.setOptions({ editable: true });
         } else {
-          item.setOptions({ editable: false });
+          item.poly.setOptions({ editable: false });
         }
       });
     },
