@@ -46,6 +46,7 @@
       </div>
       {{ index }}
       <span @click="add"> ADD </span>
+      <span v-if="edit" @click="save"> SALVAR </span>
       <div class="bg-red-200">
         <div class="flex">
           <div class="w-1/4">
@@ -67,8 +68,8 @@
             <p>{{ Farm.incraData[item.matriculaId].farmName }}</p>
           </div>
           <div class="w-1/5 flex">
-            <p class="mr-2" @click="focusMapIndex(index)">Focar</p>
-            <button @click="editable(index)">ED</button>
+            <p v-if="!edit" class="mr-2" @click="focusMapIndex(index)">Focar</p>
+            <button v-if="!edit" @click="editable(index)">ED</button>
           </div>
         </div>
       </div>
@@ -88,6 +89,7 @@ export default defineComponent({
     Farm: {},
     Map: {},
     index: -1,
+    edit: false,
     fig: [],
   }),
 
@@ -209,14 +211,38 @@ export default defineComponent({
 
         polygonOptions: {
           strokeColor: "#0f0",
-          editable: true,
-          dragabble: true,
+          // editable: true,
+          // dragabble: true,
         },
       });
 
       drawing.addListener("polygoncomplete", (e) => {
-        console.log(e);
-        e.setEditable(true);
+        const polygon: any = [];
+        e.getPaths().Nb[0].Nb.forEach((element) => {
+          polygon.push([element.lng(), element.lat()]);
+        });
+
+        const Farm = this.Farm;
+
+        this.Farm = {
+          ...Farm,
+          incraData: [
+            ...Farm.incraData,
+            {
+              cityCode: "xxxxxxx",
+              farmName: "XXX XXXX XXX",
+              geometry: {
+                coordinates: [polygon],
+                type: "Polygon",
+              },
+              registry: "xx",
+            },
+          ],
+        };
+
+        const length = this.fig.length;
+        this.fig[length] = e;
+        e.addListener("rightclick", (ev) => this.removePoint(ev, length));
 
         drawing.setDrawingMode();
       });
@@ -236,7 +262,10 @@ export default defineComponent({
       });
 
       this.fig.forEach((item, i) => {
-        item.setOptions({ strokeColor: randHexadecimalColor() });
+        item.setOptions({
+          strokeColor: randHexadecimalColor(),
+          editable: false,
+        });
       });
 
       this.Map.fitBounds(Polygon.getBounds());
@@ -247,17 +276,33 @@ export default defineComponent({
 
       this.fig.forEach((item, i) => {
         if (index === i) {
-          item.setOptions({ strokeColor: "#0f0", editable: false });
+          item.setOptions({
+            strokeColor: "#0f0",
+            editable: false,
+          });
         } else {
-          item.setOptions({ strokeColor: "#999", editable: false });
+          item.setOptions({
+            strokeColor: "#999",
+            editable: false,
+          });
         }
       });
 
       this.Map.fitBounds(this.fig[index].getBounds());
     },
 
+    save() {
+      this.edit = false;
+      this.focusMap();
+    },
+
     editable(index) {
+      this.edit = true;
       this.focusMapIndex(index);
+      this.fig[index].getPaths().Nb[0].Nb.forEach((element) => {
+        console.log(element.lat(), element.lng());
+      });
+
       this.fig.forEach((item, i) => {
         if (index === i) {
           item.setOptions({ editable: true });
