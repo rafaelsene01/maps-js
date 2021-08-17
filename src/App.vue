@@ -130,6 +130,7 @@ export default defineComponent({
 
   methods: {
     changeIndex(value: number) {
+      console.log(value);
       this.index = value;
     },
 
